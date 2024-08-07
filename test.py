@@ -1,6 +1,2 @@
 
-
-s = " hello "
-print(s)
-
-print(s.strip())
+print(2 / 4)
