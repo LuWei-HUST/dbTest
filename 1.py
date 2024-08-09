@@ -1,13 +1,17 @@
 import os
 import shutil
+import table
+import copy
 
 tablePathBase = "/home/luwei/code/dbTest/storage"
 curTable = "default"
+tDict = {}
 
 def createDB(dbName):
     pass
 
 def createTable(tbName):
+    tmpT = table.Table(tbName)
     tablePath = os.path.join(tablePathBase, tbName+".wtbl")
 
     if os.path.exists(tablePath):
@@ -35,28 +39,42 @@ def createTable(tbName):
                     f.write(colName+","+colType+"\n")
                 f = open(colPath, "w")
                 f.close()
-                pass
+                
+                tmpT.addColumn(colName)
 
             i += 1
+
+        tDict[tbName] = copy.deepcopy(tmpT)
+        tmpT = None
 
         return True
 
 def showTable(tbName):
     tablePath = os.path.join(tablePathBase, tbName+".wtbl")
-
     # undone
     if os.path.exists(tablePath):
-        cols = []
-        with open(tablePath, "r") as f:
-            lines = f.readlines()
-            for l in lines:
-                c = l.strip().split(",")[0]
-                cols.append(c)
-        
-        for c in cols:
-            print(c.strip() + "    ", end=None)
-
-        
+        if tbName in tDict.keys():
+            tDict[tbName].showTable()
+        else:
+            tmpT = table.Table(tbName)
+            with open(tablePath, 'r') as f:
+                lines = f.readlines()
+                cols = [i.strip().split(",")[0] for i in lines]
+                ind = 0
+                for c in cols:
+                    tmpT.addColumn(c)
+                    colFilePath = os.path.join(tablePathBase, c+".wcol")
+                    if os.path.exists(colFilePath):
+                        with open(colFilePath, 'r') as f:
+                            lines = f.readlines()
+                            colDatas = [i.strip() for i in lines]
+                            tmpT.addColumnData(ind, colDatas)
+                    else:
+                        print("get column data error")
+                    ind += 1
+            
+            tDict[tbName] = copy.deepcopy(tmpT)
+            tDict[tbName].showTable()
     else:
         print("table {} not exists".format(tbName))
 

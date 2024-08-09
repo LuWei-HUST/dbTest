@@ -1,7 +1,10 @@
 
+from prettytable import PrettyTable
+
 class Table:
 
-    def __init__(self) -> None:
+    def __init__(self, name) -> None:
+        self.name = name
         self.t = []
         self.colNum = 0
         self.colNames = []
@@ -15,10 +18,18 @@ class Table:
         else:
             print("column values should be same length")
 
+    def addColumnData(self, ind, vals):
+        for v in vals:
+            self.t[ind].append(v)
+
     def addColumn(self, colName):
         self.t.append([])
         self.colNum += 1
         self.colNames.append(colName)
 
     def showTable(self):
-        pass
+        pt = PrettyTable()
+        pt.add_column(self.colNames[0], self.t[0])
+        pt.add_column(self.colNames[1], self.t[1])
+
+        print(pt)
