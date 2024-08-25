@@ -1,8 +1,8 @@
 import re
 
 
+# string = "create table test;"
 string = "select * from test;"
-string = "select col1, col2 from test;"
 print(string)
 
 select_pat = r"[ ]*select[ ]+([1-9a-zA-Z,_ \*]+)[ ]+from[ ]+([1-9a-zA-Z_\*]+)[ ]*;"

@@ -14,16 +14,28 @@ def getColumn(tbName, colNames):
             ind = 0
             for c in colNames:
                 if c in cols:
-                    tmpT.addColumn(c)
                     colFilePath = os.path.join(tablePathBase, c+".wcol")
                     if os.path.exists(colFilePath):
+                        tmpT.addColumn(c)
                         with open(colFilePath, 'r') as f:
                             lines = f.readlines()
                             colDatas = [i.strip() for i in lines]
                             tmpT.addColumnData(ind, colDatas)
+                        ind += 1
                     else:
                         print("get column data error")
-                ind += 1
+                elif c == "*":
+                    for c_ in cols:
+                        colFilePath = os.path.join(tablePathBase, c_+".wcol")
+                        if os.path.exists(colFilePath):
+                            tmpT.addColumn(c_)
+                            with open(colFilePath, 'r') as f:
+                                lines = f.readlines()
+                                colDatas = [i.strip() for i in lines]
+                                tmpT.addColumnData(ind, colDatas)
+                            ind += 1
+                        else:
+                            print("get column data error")
         return tmpT
     else:
         print("table {} not exists".format(tbName))

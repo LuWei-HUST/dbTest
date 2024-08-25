@@ -182,10 +182,6 @@ if __name__ == "__main__":
             else:
                 print("CREATE DATABASE FAILED")
 
-        if ch == "show table":
-            tbName = input("enter table name: ")
-            showTable(tbName)
-
         if ch.startswith("copy from"):
             args = ch.split(" ")
 
