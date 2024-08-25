@@ -1,7 +1,9 @@
 import os
+import re
 import shutil
 import table
 import copy
+import parser
 
 tablePathBase = "/home/luwei/code/dbTest/storage"
 curTable = "default"
@@ -146,8 +148,11 @@ def insert():
         print("TABLE {} NOT EXISTS".format(curTable))
 
 if __name__ == "__main__":
+    select_pat = r"[ ]*select[ ]+([1-9a-zA-Z,_ \*]+)[ ]+from[ ]+([1-9a-zA-Z_\*]+)[ ]*;"
+
     while True:
         ch = input("wsql#: ")
+
         if ch == "quit":
             exit()
 
@@ -158,6 +163,16 @@ if __name__ == "__main__":
         #         print("CREATE DATABASE {}".format(dbName))
         #     else:
         #         print("CREATE DATABASE FAILED")
+        res = re.search(select_pat, ch)
+        if res:
+            colNamesText = res.group(1)
+            colNames = colNamesText.strip().split(",")
+            colNames = [i.strip() for i in colNames]
+            # print(colNames)
+            tbName = res.group(2)
+            # print(tbName)
+            tmpT = parser.getColumn(tbName, colNames)
+            tmpT.showTable()
         
         if ch == "create table":
             tbName = input("enter table name: ")

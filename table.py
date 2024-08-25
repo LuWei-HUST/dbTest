@@ -29,7 +29,7 @@ class Table:
 
     def showTable(self):
         pt = PrettyTable()
-        pt.add_column(self.colNames[0], self.t[0])
-        pt.add_column(self.colNames[1], self.t[1])
+        for i in range(self.colNum):
+            pt.add_column(self.colNames[i], self.t[i])
 
         print(pt)
