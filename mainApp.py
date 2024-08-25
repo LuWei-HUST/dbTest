@@ -51,35 +51,6 @@ def createTable(tbName):
 
         return True
 
-def showTable(tbName):
-    tablePath = os.path.join(tablePathBase, tbName+".wtbl")
-    # undone
-    if os.path.exists(tablePath):
-        if tbName in tDict.keys():
-            tDict[tbName].showTable()
-        else:
-            tmpT = table.Table(tbName)
-            with open(tablePath, 'r') as f:
-                lines = f.readlines()
-                cols = [i.strip().split(",")[0] for i in lines]
-                ind = 0
-                for c in cols:
-                    tmpT.addColumn(c)
-                    colFilePath = os.path.join(tablePathBase, c+".wcol")
-                    if os.path.exists(colFilePath):
-                        with open(colFilePath, 'r') as f:
-                            lines = f.readlines()
-                            colDatas = [i.strip() for i in lines]
-                            tmpT.addColumnData(ind, colDatas)
-                    else:
-                        print("get column data error")
-                    ind += 1
-            
-            tDict[tbName] = copy.deepcopy(tmpT)
-            tDict[tbName].showTable()
-    else:
-        print("table {} not exists".format(tbName))
-
 def parseCsv(csvPath, sep):
     pass
 
@@ -150,6 +121,7 @@ def insert():
 if __name__ == "__main__":
     select_pat = r"[ ]*select[ ]+([1-9a-zA-Z,_ \*]+)[ ]+from[ ]+([1-9a-zA-Z_]+)[ ]*;"
     create_pat = r"[ ]*create[ ]+table[ ]+([1-9a-zA-Z_]+)[ ]*;"
+    drop_pat = r"[ ]*drop[ ]+table[ ]+([1-9a-zA-Z_]+)[ ]*;"
 
     while True:
         ch = input("wsql#: ")
@@ -173,7 +145,8 @@ if __name__ == "__main__":
             tbName = res.group(2)
             # print(tbName)
             tmpT = parser.getColumn(tbName, colNames)
-            tmpT.showTable()
+            if tmpT:
+                tmpT.showTable()
         
         res = re.search(create_pat, ch)
         if res:
@@ -194,8 +167,9 @@ if __name__ == "__main__":
                 sep = args[-1]
                 parseCsv(csvPath, sep)
 
-        if ch == "drop table":
-            tbName = input("enter table name: ")
+        res = re.search(drop_pat, ch)
+        if res:
+            tbName = res.group(1)
             dropTable(tbName)
 
         if ch == "use table":
