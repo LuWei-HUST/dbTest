@@ -12,42 +12,23 @@ tDict = {}
 def createDB(dbName):
     pass
 
-def createTable(tbName):
-    tmpT = table.Table(tbName)
-    tablePath = os.path.join(tablePathBase, tbName+".wtbl")
+def createTable(tbName, colNames):
+    tableDirPath = os.path.join(tablePathBase, tbName)
 
-    if os.path.exists(tablePath):
+    if os.path.exists(tableDirPath):
         print("table {} already exixts".format(tbName))
         return False
     else:
-        f = open(tablePath, "w")
-        f.close()
-        
-        i = 1
-        while True:
-            # input column
-            col = input("col{}: ".format(i))
-            if col == r"\q":
-                break
+        os.mkdir(tableDirPath)
+        tableMetaPath = os.path.join(tableDirPath, tbName+".meta")
+        with open(tableMetaPath, "w") as f:
+            f.writelines([i+"\n" for i in colNames])
 
-            args = col.strip().split(" ")
-            if len(args) != 2:
-                print("syntax error")
-            else:
-                colName = args[0]
-                colType = args[1]
-                colPath = os.path.join(tablePathBase, colName+".wcol")
-                with open(tablePath, "a") as f:
-                    f.write(colName+","+colType+"\n")
-                f = open(colPath, "w")
-                f.close()
-                
-                tmpT.addColumn(colName)
-
-            i += 1
-
-        tDict[tbName] = copy.deepcopy(tmpT)
-        tmpT = None
+        for c in colNames:
+            colName = c.split(" ")[0]
+            colPath = os.path.join(tableDirPath, colName+".wcol")
+            with open(colPath, "w") as f:
+                pass
 
         return True
 
@@ -55,18 +36,11 @@ def parseCsv(csvPath, sep):
     pass
 
 def dropTable(tbName):
-    tablePath = os.path.join(tablePathBase, tbName+".wtbl")
-    if os.path.exists(tablePath):
-        with open(tablePath, "r") as f:
-            lines = f.readlines()
-            for l in lines:
-                c = l.strip().split(",")[0]
-                colFilePath = os.path.join(tablePathBase, c+".wcol")
-                if os.path.exists(colFilePath):
-                    os.remove(colFilePath)
+    tableDirPath = os.path.join(tablePathBase, tbName)
+    if os.path.exists(tableDirPath):
+        shutil.rmtree(tableDirPath)
 
-        os.remove(tablePath)
-        print("TABLE {} droped".format(tbName))
+        print("TABLE {} DROPED".format(tbName))
     else:
         print("TABLE {} NOT EXISTS".format(tbName))
 
@@ -120,7 +94,7 @@ def insert():
 
 if __name__ == "__main__":
     select_pat = r"[ ]*select[ ]+([1-9a-zA-Z,_ \*]+)[ ]+from[ ]+([1-9a-zA-Z_]+)[ ]*;"
-    create_pat = r"[ ]*create[ ]+table[ ]+([1-9a-zA-Z_]+)[ ]*;"
+    create_pat = r"[ ]*create[ ]+table[ ]+([1-9a-zA-Z_]+)\(([1-9a-zA-Z, _]+)\)[ ]*;"
     drop_pat = r"[ ]*drop[ ]+table[ ]+([1-9a-zA-Z_]+)[ ]*;"
 
     while True:
@@ -151,7 +125,17 @@ if __name__ == "__main__":
         res = re.search(create_pat, ch)
         if res:
             tbName = res.group(1)
-            r = createTable(tbName)
+            colNames = res.group(2).strip().split(",")
+            colNames = [i.strip() for i in colNames]
+            tmpCols = colNames[:]
+            colNames = []
+            for c in tmpCols:
+                tmp_ = c.split(" ")
+                tmp_ = [i.strip() for i in tmp_]
+                tmp_ = list(filter(lambda x: x and x.strip(), tmp_))
+                tmp_ = " ".join(tmp_)
+                colNames.append(tmp_)
+            r = createTable(tbName, colNames)
             if r:
                 print("CREATE TABLE {}".format(tbName))
             else:
