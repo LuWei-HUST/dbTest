@@ -148,7 +148,8 @@ def insert():
         print("TABLE {} NOT EXISTS".format(curTable))
 
 if __name__ == "__main__":
-    select_pat = r"[ ]*select[ ]+([1-9a-zA-Z,_ \*]+)[ ]+from[ ]+([1-9a-zA-Z_\*]+)[ ]*;"
+    select_pat = r"[ ]*select[ ]+([1-9a-zA-Z,_ \*]+)[ ]+from[ ]+([1-9a-zA-Z_]+)[ ]*;"
+    create_pat = r"[ ]*create[ ]+table[ ]+([1-9a-zA-Z_]+)[ ]*;"
 
     while True:
         ch = input("wsql#: ")
@@ -174,8 +175,9 @@ if __name__ == "__main__":
             tmpT = parser.getColumn(tbName, colNames)
             tmpT.showTable()
         
-        if ch == "create table":
-            tbName = input("enter table name: ")
+        res = re.search(create_pat, ch)
+        if res:
+            tbName = res.group(1)
             r = createTable(tbName)
             if r:
                 print("CREATE TABLE {}".format(tbName))
