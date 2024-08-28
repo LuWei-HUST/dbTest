@@ -13,12 +13,18 @@ class SqlParser:
         self.select_pat = r"[ ]*select[ ]+([1-9a-zA-Z,_ \*]+)[ ]+from[ ]+([1-9a-zA-Z_]+)[ ]*;"
         self.create_head_pat = "create"
         self.create_pat = r"[ ]*create[ ]+table[ ]+([1-9a-zA-Z_]+)\(([1-9a-zA-Z, _]+)\)[ ]*;"
+        self.insert_head_pat = "insert"
+        self.insert_pat = r"[ ]*insert[ ]+into[ ]+([1-9a-zA-Z_]+)[ ]+values[ ]*\((.*?)\)[ ]*;"
+        self.int_pat = r"(\d+)"
+        self.string_pat = r"'(.*)'"
 
     def parse(self, input_string):
         input_string = input_string.strip().lower()
 
+        match_flag = False
         r = re.match(self.drop_head_pat, input_string)
         if r:
+            match_flag = True
             r_ = re.search(self.drop_pat, input_string)
             if r_:
                 tbName = r_.group(1)
@@ -28,6 +34,7 @@ class SqlParser:
 
         r = re.match(self.select_head_pat, input_string)
         if r:
+            match_flag = True
             r_ = re.search(self.select_pat, input_string)
             if r_:
                 colNamesText = r_.group(1)
@@ -44,6 +51,7 @@ class SqlParser:
 
         r = re.match(self.create_head_pat, input_string)
         if r:
+            match_flag = True
             r_ = re.search(self.create_pat, input_string)
             if r_:
                 tbName = r_.group(1)
@@ -64,6 +72,77 @@ class SqlParser:
                     print("CREATE DATABASE FAILED")
             else:
                 print("syntax error: create table tablename(col1 type1, col2 type2, ...);")
+
+        r = re.match(self.insert_head_pat, input_string)
+        if r:
+            match_flag = True
+            r_ = re.search(self.insert_pat, input_string)
+            if r_:
+                tbName = r_.group(1)
+                # print(tbName)
+                values = r_.group(2).strip().split(",")
+                values = [i.strip() for i in values]
+
+                values_parsed = []
+                values_type = []
+                flag = True
+                for val in values:
+                    v = re.search(self.string_pat, val)
+                    if v:
+                        values_parsed.append(v.group(1))
+                        values_type.append("string")
+                        continue
+
+                    v = re.search(self.int_pat, val)
+                    if v:
+                        values_parsed.append(int(v.group(1)))
+                        values_type.append("int")
+                        continue
+                    
+                    flag = False
+                    print("parse failed, syntax error or unsupported format")
+                    break
+                    
+
+                # print(values)
+                if flag:
+                    insertValues(tbName, values_parsed, values_type)
+
+        if not match_flag:
+            print("syntax error, match nothing")
+
+def insertValues(tbName, values, values_type):
+    tablePathBase = os.path.join(util.getHomeDir(), "storage")
+    tableDirPath = os.path.join(tablePathBase, tbName)
+
+    if os.path.exists(tableDirPath):
+        tableMetaPath = os.path.join(tableDirPath, tbName+".meta")
+        if os.path.exists(tableMetaPath):
+            with open(tableMetaPath, 'r') as f:
+                lines = f.readlines()
+                cols = [i.strip().split(" ")[0] for i in lines]
+                if len(cols) != len(values):
+                    print("column not match")
+                    return
+                
+                types = [i.strip().split(" ")[1] for i in lines]
+                len_types = len(types)
+                for i in range(len_types):
+                    if types[i].lower() != values_type[i].lower():
+                        print("type not match")
+                        return
+                
+                len_cols = len(cols)
+                for i in range(len_cols):
+                    colFilePath = os.path.join(tableDirPath, cols[i]+".wcol")
+                    with open(colFilePath, 'a') as fout:
+                        fout.write(str(values[i]))
+                        fout.write("\n")
+
+        else:
+            print("table {} file damaged".format(tbName))
+    else:
+        print("table {} not exists".format(tbName))
 
 def createTable(tbName, colNames):
     tablePathBase = os.path.join(util.getHomeDir(), "storage")
