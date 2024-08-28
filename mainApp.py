@@ -3,6 +3,7 @@ import re
 import shutil
 import table
 import copy
+import util
 from parser import SqlParser
 
 tablePathBase = "/home/luwei/code/dbTest/storage"
@@ -66,6 +67,11 @@ if __name__ == "__main__":
 
         if ch == "quit":
             exit()
+        
+        if ch == "show tables":
+            allTables = util.getAllTables()
+            allTables.showTable()
+            continue
 
         sqlparser.parse(ch)
 

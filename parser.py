@@ -102,11 +102,13 @@ class SqlParser:
                     flag = False
                     print("parse failed, syntax error or unsupported format")
                     break
-                    
 
                 # print(values)
                 if flag:
                     insertValues(tbName, values_parsed, values_type)
+
+            else:
+                print("syntax error: insert into tablename values(val1, val2, ...)")
 
         if not match_flag:
             print("syntax error, match nothing")
