@@ -3,6 +3,7 @@ import table
 import util
 import re
 import shutil
+import pandas as pd
 
 class SqlParser:
 
@@ -17,6 +18,8 @@ class SqlParser:
         self.insert_pat = r"[ ]*insert[ ]+into[ ]+([1-9a-zA-Z_]+)[ ]+values[ ]*\((.*?)\)[ ]*;"
         self.int_pat = r"(\d+)"
         self.string_pat = r"'(.*)'"
+        self.copy_head_pat = "copy"
+        self.copy_pat = r"[ ]*copy[ ]+from[ ]+([/a-zA-Z0-9_\.]+)[ ]+to[ ]+([1-9a-zA-Z_]+)[ ]+format[ ]+'(.)'[ ]*;"
 
     def parse(self, input_string):
         input_string = input_string.strip().lower()
@@ -108,7 +111,75 @@ class SqlParser:
                     insertValues(tbName, values_parsed, values_type)
 
             else:
-                print("syntax error: insert into tablename values(val1, val2, ...)")
+                print("syntax error: insert into tablename values(val1, val2, ...);")
+
+        r = re.match(self.copy_head_pat, input_string)
+        if r:
+            match_flag = True
+            r_ = re.search(self.copy_pat, input_string)
+            if r_:
+                filePath = r_.group(1)
+                tbName = r_.group(2)
+                sep = r_.group(3)
+                tableDirPath = os.path.join(util.getHomeDir(), "storage", tbName)
+                tableMatePath = os.path.join(tableDirPath, tbName+".meta")
+
+                if not os.path.exists(filePath):
+                    print("No such file or directory")
+                    return
+                elif not os.path.exists(tableMatePath):
+                    print("get {}.meta failed".format(tbName))
+                    return
+                else:
+                    with open(tableMatePath, "r") as fin:
+                        lines = fin.readlines()
+                        cols = [i.strip().split(" ")[0] for i in lines]
+                        types = [i.strip().split(" ")[1] for i in lines]
+
+                        df = pd.read_csv(filePath, sep=sep)
+                        len_col = df.shape[1]
+
+                        if len_col != len(cols):
+                            print("column not match")
+                            return
+
+                        col_data = []
+                        
+                        for i in range(len_col):
+                            flag = False
+                            if types[i] == "int":
+                                flag = True
+                                try:
+                                    # tmp_data = int(df.iloc[:, i])
+                                    tmp_data = list(df.iloc[:, i])
+                                    tmp_data = [str(item) for item in tmp_data]
+                                    col_data.append(tmp_data)
+                                except Exception as e:
+                                    print("parse data failed")
+                                    return
+
+                            if types[i] == "string":
+                                flag = True
+                                try:
+                                    tmp_data = list(df.iloc[:, i])
+                                    col_data.append(tmp_data)
+                                except Exception as e:
+                                    print("parse data failed")
+                                    return
+                            
+                            if not flag:
+                                print("error type")
+                                return
+
+                        for i in range(len_col):
+                            colFilePath = os.path.join(tableDirPath, cols[i]+".wcol")
+                            with open(colFilePath, 'a') as fout:
+                                fout.writelines([item+"\n" for item in col_data[i]])
+
+                        return len(col_data[0])
+
+            else:
+                print("syntax error: copy from filepath to tablename format 'sep';")
 
         if not match_flag:
             print("syntax error, match nothing")
