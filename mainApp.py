@@ -6,10 +6,6 @@ import copy
 import util
 from parser import SqlParser
 
-tablePathBase = "/home/luwei/code/dbTest/storage"
-curTable = "default"
-tDict = {}
-
 if __name__ == "__main__":
 
     sqlparser = SqlParser()

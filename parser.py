@@ -22,7 +22,7 @@ class SqlParser:
         self.copy_pat = r"[ ]*copy[ ]+from[ ]+([/a-zA-Z0-9_\.]+)[ ]+to[ ]+([1-9a-zA-Z_]+)[ ]+format[ ]+'(.)'[ ]*;"
 
     def parse(self, input_string):
-        input_string = input_string.strip().lower()
+        input_string = input_string.strip()
 
         match_flag = False
         r = re.match(self.drop_head_pat, input_string)
@@ -124,6 +124,7 @@ class SqlParser:
                 tableDirPath = os.path.join(util.getHomeDir(), "storage", tbName)
                 tableMatePath = os.path.join(tableDirPath, tbName+".meta")
 
+                # print(filePath)
                 if not os.path.exists(filePath):
                     print("No such file or directory")
                     return
@@ -208,9 +209,15 @@ def insertValues(tbName, values, values_type):
                 len_cols = len(cols)
                 for i in range(len_cols):
                     colFilePath = os.path.join(tableDirPath, cols[i]+".wcol")
-                    with open(colFilePath, 'a') as fout:
-                        fout.write(str(values[i]))
-                        fout.write("\n")
+                    with open(colFilePath, 'ab') as fout:
+                        if types[i].lower() == "string":
+                            d_ = util.string_to_fixed_bytes(values[i], 255)
+                            fout.write(d_)
+
+                        if types[i].lower() == "int":
+                            d_ = util.int_to_fixed_bytes(values[i])
+                            fout.write(d_)
+
 
         else:
             print("table {} file damaged".format(tbName))
@@ -259,6 +266,7 @@ def getColumn(tbName, colNames):
             with open(tableMetaPath, 'r') as f:
                 lines = f.readlines()
                 cols = [i.strip().split(" ")[0] for i in lines]
+                types = [i.strip().split(" ")[1] for i in lines]
 
                 for c in colNames:
                     if c not in cols and c != "*":
@@ -271,21 +279,65 @@ def getColumn(tbName, colNames):
                         colFilePath = os.path.join(tableDirPath, c+".wcol")
                         if os.path.exists(colFilePath):
                             tmpT.addColumn(c)
-                            with open(colFilePath, 'r') as f:
-                                lines = f.readlines()
-                                colDatas = [i.strip() for i in lines]
+                            with open(colFilePath, 'rb') as f:
+                                index = cols.index(c)
+                                tp = types[index]
+
+                                colDatas = []
+                                if tp.lower() == "string":
+                                    len = int(f.seek(0, 2) / 255)
+                                    f.seek(0)
+
+                                    for j in range(len):
+                                        s = f.read(255)
+                                        len_head = int.from_bytes(s[:2], "big")
+                                        s = s[2:len_head+2]
+                                        d = s.decode(encoding='UTF-8',errors='strict')
+                                        colDatas.append(d)
+
+                                if tp.lower() == "int":
+                                    len = int(f.seek(0, 2) / 4)
+                                    f.seek(0)
+
+                                    for j in range(len):
+                                        s = f.read(4)
+                                        d = util.int_from_fixed_bytes(s)
+                                        colDatas.append(d)                            
                                 tmpT.addColumnData(ind, colDatas)
                             ind += 1
                         else:
                             print("get column data error")
                     elif c == "*":
+                        # print(cols)
                         for c_ in cols:
                             colFilePath = os.path.join(tableDirPath, c_+".wcol")
                             if os.path.exists(colFilePath):
                                 tmpT.addColumn(c_)
-                                with open(colFilePath, 'r') as f:
-                                    lines = f.readlines()
-                                    colDatas = [i.strip() for i in lines]
+                                with open(colFilePath, 'rb') as f:
+                                    index = cols.index(c_)
+                                    tp = types[index]
+
+                                    colDatas = []
+                                    if tp.lower() == "string":
+                                        len = int(f.seek(0, 2) / 255)
+                                        f.seek(0)
+
+                                        for j in range(len):
+                                            s = f.read(255)
+                                            len_head = int.from_bytes(s[:2], "big")
+                                            s = s[2:len_head+2]
+                                            d = s.decode(encoding='UTF-8',errors='strict')
+                                            colDatas.append(d)
+
+                                    if tp.lower() == "int":
+                                        len = int(f.seek(0, 2) / 4)
+                                        f.seek(0)
+
+                                        for j in range(len):
+                                            s = f.read(4)
+                                            d = util.int_from_fixed_bytes(s)
+                                            colDatas.append(d)
+                                    # print(colDatas)
                                     tmpT.addColumnData(ind, colDatas)
                                 ind += 1
                             else:
