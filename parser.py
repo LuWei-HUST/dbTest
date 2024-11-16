@@ -5,6 +5,11 @@ import re
 import shutil
 import pandas as pd
 
+STRING_PAT = r"^'(.*)'$"
+INT_PAT = r"^(\d+)$"
+DOUBLE_PAT_1 = r"^(\d+\.\d+)$"
+DOUBLE_PAT_2 = r"^(\d+)$"
+
 class SqlParser:
 
     def __init__(self) -> None:
@@ -85,30 +90,8 @@ class SqlParser:
                 # print(tbName)
                 values = r_.group(2).strip().split(",")
                 values = [i.strip() for i in values]
-
-                values_parsed = []
-                values_type = []
-                flag = True
-                for val in values:
-                    v = re.search(self.string_pat, val)
-                    if v:
-                        values_parsed.append(v.group(1))
-                        values_type.append("string")
-                        continue
-
-                    v = re.search(self.int_pat, val)
-                    if v:
-                        values_parsed.append(int(v.group(1)))
-                        values_type.append("int")
-                        continue
-                    
-                    flag = False
-                    print("parse failed, syntax error or unsupported format")
-                    break
-
-                # print(values)
-                if flag:
-                    insertValues(tbName, values_parsed, values_type)
+                
+                insertValues(tbName, values)
 
             else:
                 print("syntax error: insert into tablename values(val1, val2, ...);")
@@ -185,7 +168,7 @@ class SqlParser:
         if not match_flag:
             print("syntax error, match nothing")
 
-def insertValues(tbName, values, values_type):
+def insertValues(tbName, values):
     tablePathBase = os.path.join(util.getHomeDir(), "storage")
     tableDirPath = os.path.join(tablePathBase, tbName)
 
@@ -200,11 +183,41 @@ def insertValues(tbName, values, values_type):
                     return
                 
                 types = [i.strip().split(" ")[1] for i in lines]
+                
                 len_types = len(types)
+
+                values_parsed = []
+
                 for i in range(len_types):
-                    if types[i].lower() != values_type[i].lower():
-                        print("type not match")
-                        return
+                    if types[i].lower() == "string":
+                        v = re.search(STRING_PAT, values[i])
+                        if v:
+                            values_parsed.append(v.group(1))
+                        else:
+                            print("value '{}' parse failed".format(values[i]))
+                            return
+                    
+                    if types[i].lower() == "int":
+                        v = re.search(INT_PAT, values[i])
+                        if v:
+                            values_parsed.append(int(v.group(1)))
+                        else:
+                            print("value '{}' parse failed".format(values[i]))
+                            return
+
+                    if types[i].lower() == "double":
+                        v = re.search(DOUBLE_PAT_1, values[i])
+                        if v:
+                            values_parsed.append(float(v.group(1)))
+                        else:
+                            v = re.search(DOUBLE_PAT_2, values[i])
+                            if v:
+                                values_parsed.append(float(v.group(1)))
+                            else: 
+                                print("value '{}' parse failed".format(values[i]))
+                                return
+
+                values = values_parsed
                 
                 len_cols = len(cols)
                 for i in range(len_cols):
@@ -218,6 +231,10 @@ def insertValues(tbName, values, values_type):
                             d_ = util.int_to_fixed_bytes(values[i])
                             fout.write(d_)
 
+                        if types[i].lower() == "double":
+                            d_ = util.double_to_fixed_bytes(values[i])
+                            fout.write(d_)
+
 
         else:
             print("table {} file damaged".format(tbName))
@@ -227,6 +244,15 @@ def insertValues(tbName, values, values_type):
 def createTable(tbName, colNames):
     tablePathBase = os.path.join(util.getHomeDir(), "storage")
     tableDirPath = os.path.join(tablePathBase, tbName)
+
+    if not os.path.exists(tablePathBase):
+        os.mkdir(tablePathBase)
+
+    for c in colNames:
+        colType = c.split(" ")[1]
+        if colType.lower() not in ["int", "string", "double"]:
+            print("Only support INT, STRING and DOUBLE .")
+            return False
 
     if os.path.exists(tableDirPath):
         print("table {} already exixts".format(tbName))
@@ -302,7 +328,17 @@ def getColumn(tbName, colNames):
                                     for j in range(len):
                                         s = f.read(4)
                                         d = util.int_from_fixed_bytes(s)
-                                        colDatas.append(d)                            
+                                        colDatas.append(d)
+
+                                if tp.lower() == "double":
+                                    len = int(f.seek(0, 2) / 8)
+                                    f.seek(0)
+
+                                    for j in range(len):
+                                        s = f.read(8)
+                                        d = util.double_from_fixed_bytes(s)
+                                        colDatas.append(d)
+
                                 tmpT.addColumnData(ind, colDatas)
                             ind += 1
                         else:
@@ -336,6 +372,15 @@ def getColumn(tbName, colNames):
                                         for j in range(len):
                                             s = f.read(4)
                                             d = util.int_from_fixed_bytes(s)
+                                            colDatas.append(d)
+
+                                    if tp.lower() == "double":
+                                        len = int(f.seek(0, 2) / 8)
+                                        f.seek(0)
+
+                                        for j in range(len):
+                                            s = f.read(8)
+                                            d = util.double_from_fixed_bytes(s)
                                             colDatas.append(d)
                                     # print(colDatas)
                                     tmpT.addColumnData(ind, colDatas)

@@ -30,5 +30,11 @@ def int_to_fixed_bytes(v):
 def int_from_fixed_bytes(d):
     return struct.unpack(">i", d)[0]
 
+def double_to_fixed_bytes(v):
+    return struct.pack(">d", v)
+
+def double_from_fixed_bytes(d):
+    return struct.unpack(">d", d)[0]
+
 if __name__ == "__main__":
     print(getHomeDir())
