@@ -9,6 +9,8 @@ INT_PAT = r"^(\d+)$"
 DOUBLE_PAT_1 = r"^(\d+\.\d+)$"
 DOUBLE_PAT_2 = r"^(\d+)$"
 
+TABLES = {}
+
 def createTable(tbName, colNames):
     tablePathBase = os.path.join(getHomeDir(), "storage")
     tableDirPath = os.path.join(tablePathBase, tbName)
@@ -22,10 +24,18 @@ def createTable(tbName, colNames):
             print("Only support INT, STRING and DOUBLE .")
             return False
 
-    if os.path.exists(tableDirPath):
+    if tbName in TABLES.keys():
         print("table {} already exixts".format(tbName))
         return False
     else:
+        tmp = table.Table(tbName)
+        
+        for c in colNames:
+            colName = c.split(" ")[0]
+            tmp.addColumn(colName)
+
+        TABLES[tbName] = tmp
+
         os.mkdir(tableDirPath)
         tableMetaPath = os.path.join(tableDirPath, tbName+".meta")
         with open(tableMetaPath, "w") as f:
@@ -42,6 +52,65 @@ def createTable(tbName, colNames):
 def insertValues(tbName, values):
     tablePathBase = os.path.join(getHomeDir(), "storage")
     tableDirPath = os.path.join(tablePathBase, tbName)
+
+    if tbName in TABLES.keys():
+        if os.path.exists(tableDirPath):
+            tableMetaPath = os.path.join(tableDirPath, tbName+".meta")
+            if os.path.exists(tableMetaPath):
+                with open(tableMetaPath, 'r') as f:
+                    lines = f.readlines()
+                    cols = [i.strip().split(" ")[0] for i in lines]
+                    if len(cols) != len(values):
+                        print("column not match")
+                        return
+                    
+                    types = [i.strip().split(" ")[1] for i in lines]
+                    
+                    len_types = len(types)
+
+                    values_parsed = []
+
+                    for i in range(len_types):
+                        if types[i].lower() == "string":
+                            v = re.search(STRING_PAT, values[i])
+                            if v:
+                                values_parsed.append(v.group(1))
+                            else:
+                                print("value '{}' parse failed".format(values[i]))
+                                return
+                        
+                        if types[i].lower() == "int":
+                            v = re.search(INT_PAT, values[i])
+                            if v:
+                                values_parsed.append(int(v.group(1)))
+                            else:
+                                print("value '{}' parse failed".format(values[i]))
+                                return
+
+                        if types[i].lower() == "double":
+                            v = re.search(DOUBLE_PAT_1, values[i])
+                            if v:
+                                values_parsed.append(float(v.group(1)))
+                            else:
+                                v = re.search(DOUBLE_PAT_2, values[i])
+                                if v:
+                                    values_parsed.append(float(v.group(1)))
+                                else: 
+                                    print("value '{}' parse failed".format(values[i]))
+                                    return
+
+                    values = values_parsed
+
+                    for i in range(TABLES[tbName].colNum):
+                        TABLES[tbName].addColumnData(i, [values[i]])
+                        
+            else:
+                print("table {} file damaged".format(tbName))
+                return
+        else:
+            print("table {} not exists".format(tbName))
+            return
+            
 
     if os.path.exists(tableDirPath):
         tableMetaPath = os.path.join(tableDirPath, tbName+".meta")
@@ -127,6 +196,31 @@ def getColumn(tbName, colNames):
     tableDirPath = os.path.join(tablePathBase, tbName)
     tableMetaPath = os.path.join(tableDirPath, tbName+".meta")
     # undone
+
+    if tbName in TABLES.keys():
+        for c in colNames:
+            if c not in TABLES[tbName].colNames and c != "*":
+                print("column {} not exists in table {}".format(c, tbName))
+                return
+        
+        tmpT = table.Table(tbName)
+        inx = 0
+        for c in colNames:
+            if c == "*":
+                for c_ in TABLES[tbName].colNames:
+                    tmpT.addColumn(c_)
+                    i = TABLES[tbName].colNames.index(c_)
+                    tmpT.addColumnData(inx, TABLES[tbName].t[i])
+                    inx += 1
+            else:
+                i = TABLES[tbName].colNames.index(c)
+                tmpT.addColumn(c)
+                tmpT.addColumnData(TABLES[tbName].t[i])
+                inx += 1
+
+        return tmpT
+                
+
     if os.path.exists(tableDirPath):
         if os.path.exists(tableMetaPath):
             tmpT = table.Table(tbName)

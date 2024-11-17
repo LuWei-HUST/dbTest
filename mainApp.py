@@ -1,8 +1,3 @@
-import os
-import re
-import shutil
-import table
-import copy
 import util
 from parser import SqlParser
 
