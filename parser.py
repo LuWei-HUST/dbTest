@@ -24,11 +24,20 @@ class SqlParser:
         self.string_pat = r"'(.*)'"
         self.copy_head_pat = "copy"
         self.copy_pat = r"[ ]*copy[ ]+from[ ]+([/a-zA-Z0-9_\.]+)[ ]+to[ ]+([1-9a-zA-Z_]+)[ ]+format[ ]+'(.)'[ ]*;"
+        self.desc_pat = r"[ ]*desc[ ]+table[ ]+([1-9a-zA-Z_]+)[ ]*;"
 
     def parse(self, input_string):
         input_string = input_string.strip()
 
         match_flag = False
+
+        r = re.match(self.desc_pat, input_string)
+        if r:
+            match_flag = True
+            tbName = r.group(1)
+            tmpT = util.getTableSchema(tbName)
+            tmpT.showTable()
+
         r = re.match(self.drop_head_pat, input_string)
         if r:
             match_flag = True
@@ -130,12 +139,25 @@ class SqlParser:
                         
                         for i in range(len_col):
                             flag = False
+
+                            if types[i] == "double":
+                                flag = True
+                                try:
+                                    # tmp_data = int(df.iloc[:, i])
+                                    tmp_data = list(df.iloc[:, i])
+                                    tmp_data = [float(str(item)) for item in tmp_data]
+                                    print(tmp_data)
+                                    col_data.append(tmp_data)
+                                except Exception as e:
+                                    print("parse data failed")
+                                    return
+
                             if types[i] == "int":
                                 flag = True
                                 try:
                                     # tmp_data = int(df.iloc[:, i])
                                     tmp_data = list(df.iloc[:, i])
-                                    tmp_data = [str(item) for item in tmp_data]
+                                    tmp_data = [int(str(item)) for item in tmp_data]
                                     col_data.append(tmp_data)
                                 except Exception as e:
                                     print("parse data failed")
@@ -145,6 +167,7 @@ class SqlParser:
                                 flag = True
                                 try:
                                     tmp_data = list(df.iloc[:, i])
+                                    tmp_data = [str(item) for item in tmp_data]
                                     col_data.append(tmp_data)
                                 except Exception as e:
                                     print("parse data failed")
@@ -156,8 +179,23 @@ class SqlParser:
 
                         for i in range(len_col):
                             colFilePath = os.path.join(tableDirPath, cols[i]+".wcol")
-                            with open(colFilePath, 'a') as fout:
-                                fout.writelines([item+"\n" for item in col_data[i]])
+                            if types[i] == "int":
+                                with open(colFilePath, 'ab') as fout:
+                                    for j in col_data[i]:
+                                        v = util.int_to_fixed_bytes(j)
+                                        fout.write(v)
+                            
+                            if types[i] == "double":
+                                with open(colFilePath, 'ab') as fout:
+                                    for j in col_data[i]:
+                                        v = util.double_to_fixed_bytes(j)
+                                        fout.write(v)
+
+                            if types[i] == "string":
+                                with open(colFilePath, 'ab') as fout:
+                                    for j in col_data[i]:
+                                        v = util.string_to_fixed_bytes(j, 255)
+                                        fout.write(v)
 
                         return len(col_data[0])
 

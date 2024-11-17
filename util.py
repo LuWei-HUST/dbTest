@@ -215,7 +215,7 @@ def getColumn(tbName, colNames):
             else:
                 i = TABLES[tbName].colNames.index(c)
                 tmpT.addColumn(c)
-                tmpT.addColumnData(TABLES[tbName].t[i])
+                tmpT.addColumnData(inx, TABLES[tbName].t[i])
                 inx += 1
 
         return tmpT
@@ -325,6 +325,30 @@ def getColumn(tbName, colNames):
             return tmpT
         else:
             print("table {} file damaged".format(tbName))
+    else:
+        print("table {} not exists".format(tbName))
+
+def getTableSchema(tbName):
+    tableBasePath = os.path.join(getHomeDir(), "storage")
+    tableDirPath = os.path.join(tableBasePath, tbName)
+    tableMetaPath = os.path.join(tableDirPath, tbName+".meta")
+    
+    tmpT = table.Table(tbName + "_schema")
+    if os.path.exists(tableDirPath):
+        if os.path.exists(tableMetaPath):
+            with open(tableMetaPath, 'r') as f:
+                lines = f.readlines()
+                cols = [i.strip().split(" ")[0] for i in lines]
+                types = [i.strip().split(" ")[1] for i in lines]
+
+                tmpT.addColumn("colNames")
+                tmpT.addColumnData(0, cols)
+                tmpT.addColumn("colTypes")
+                tmpT.addColumnData(1, types)
+
+            return tmpT
+        else:
+            print("table {} meta file not found".format(tbName))
     else:
         print("table {} not exists".format(tbName))
 
