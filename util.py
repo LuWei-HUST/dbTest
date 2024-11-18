@@ -3,6 +3,7 @@ import table
 import struct
 import re
 import shutil
+import pandas as pd
 
 STRING_PAT = r"^'(.*)'$"
 INT_PAT = r"^(\d+)$"
@@ -327,6 +328,150 @@ def getColumn(tbName, colNames):
             print("table {} file damaged".format(tbName))
     else:
         print("table {} not exists".format(tbName))
+
+def copyToTable(tableDirPath, tableMatePath, filePath, tbName, sep):
+
+    n = 0
+    if tbName in TABLES.keys():
+        t = TABLES[tbName]
+        
+        with open(tableMatePath, "r") as fin:
+            lines = fin.readlines()
+            cols = [i.strip().split(" ")[0] for i in lines]
+            types = [i.strip().split(" ")[1] for i in lines]
+
+            df = pd.read_csv(filePath, sep=sep)
+            len_col = df.shape[1]
+
+            if len_col != len(cols):
+                print("column not match")
+                return
+
+            col_data = []
+            
+            for i in range(len_col):
+                flag = False
+
+                if types[i] == "double":
+                    flag = True
+                    try:
+                        # tmp_data = int(df.iloc[:, i])
+                        tmp_data = list(df.iloc[:, i])
+                        tmp_data = [float(str(item)) for item in tmp_data]
+                        # print(tmp_data)
+                        col_data.append(tmp_data)
+                    except Exception as e:
+                        print("parse data failed")
+                        return
+
+                if types[i] == "int":
+                    flag = True
+                    try:
+                        # tmp_data = int(df.iloc[:, i])
+                        tmp_data = list(df.iloc[:, i])
+                        tmp_data = [int(str(item)) for item in tmp_data]
+                        col_data.append(tmp_data)
+                    except Exception as e:
+                        print("parse data failed")
+                        return
+
+                if types[i] == "string":
+                    flag = True
+                    try:
+                        tmp_data = list(df.iloc[:, i])
+                        tmp_data = [str(item) for item in tmp_data]
+                        col_data.append(tmp_data)
+                    except Exception as e:
+                        print("parse data failed")
+                        return
+                
+                if not flag:
+                    print("error type")
+                    return
+
+            for i in range(len_col):
+                t.addColumnData(i, col_data[i])
+            
+            n = len(col_data[0])
+    
+
+    with open(tableMatePath, "r") as fin:
+        lines = fin.readlines()
+        cols = [i.strip().split(" ")[0] for i in lines]
+        types = [i.strip().split(" ")[1] for i in lines]
+
+        df = pd.read_csv(filePath, sep=sep)
+        len_col = df.shape[1]
+
+        if len_col != len(cols):
+            print("column not match")
+            return
+
+        col_data = []
+        
+        for i in range(len_col):
+            flag = False
+
+            if types[i] == "double":
+                flag = True
+                try:
+                    # tmp_data = int(df.iloc[:, i])
+                    tmp_data = list(df.iloc[:, i])
+                    tmp_data = [float(str(item)) for item in tmp_data]
+                    # print(tmp_data)
+                    col_data.append(tmp_data)
+                except Exception as e:
+                    print("parse data failed")
+                    return
+
+            if types[i] == "int":
+                flag = True
+                try:
+                    # tmp_data = int(df.iloc[:, i])
+                    tmp_data = list(df.iloc[:, i])
+                    tmp_data = [int(str(item)) for item in tmp_data]
+                    col_data.append(tmp_data)
+                except Exception as e:
+                    print("parse data failed")
+                    return
+
+            if types[i] == "string":
+                flag = True
+                try:
+                    tmp_data = list(df.iloc[:, i])
+                    tmp_data = [str(item) for item in tmp_data]
+                    col_data.append(tmp_data)
+                except Exception as e:
+                    print("parse data failed")
+                    return
+            
+            if not flag:
+                print("error type")
+                return
+
+        for i in range(len_col):
+            colFilePath = os.path.join(tableDirPath, cols[i]+".wcol")
+            if types[i] == "int":
+                with open(colFilePath, 'ab') as fout:
+                    for j in col_data[i]:
+                        v = int_to_fixed_bytes(j)
+                        fout.write(v)
+            
+            if types[i] == "double":
+                with open(colFilePath, 'ab') as fout:
+                    for j in col_data[i]:
+                        v = double_to_fixed_bytes(j)
+                        fout.write(v)
+
+            if types[i] == "string":
+                with open(colFilePath, 'ab') as fout:
+                    for j in col_data[i]:
+                        v = string_to_fixed_bytes(j, 255)
+                        fout.write(v)
+        
+        n = len(col_data[0])
+
+    return n
 
 def getTableSchema(tbName):
     tableBasePath = os.path.join(getHomeDir(), "storage")

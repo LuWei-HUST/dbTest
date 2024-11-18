@@ -112,6 +112,7 @@ class SqlParser:
                 filePath = r_.group(1)
                 tbName = r_.group(2)
                 sep = r_.group(3)
+
                 tableDirPath = os.path.join(util.getHomeDir(), "storage", tbName)
                 tableMatePath = os.path.join(tableDirPath, tbName+".meta")
 
@@ -123,81 +124,10 @@ class SqlParser:
                     print("get {}.meta failed".format(tbName))
                     return
                 else:
-                    with open(tableMatePath, "r") as fin:
-                        lines = fin.readlines()
-                        cols = [i.strip().split(" ")[0] for i in lines]
-                        types = [i.strip().split(" ")[1] for i in lines]
-
-                        df = pd.read_csv(filePath, sep=sep)
-                        len_col = df.shape[1]
-
-                        if len_col != len(cols):
-                            print("column not match")
-                            return
-
-                        col_data = []
-                        
-                        for i in range(len_col):
-                            flag = False
-
-                            if types[i] == "double":
-                                flag = True
-                                try:
-                                    # tmp_data = int(df.iloc[:, i])
-                                    tmp_data = list(df.iloc[:, i])
-                                    tmp_data = [float(str(item)) for item in tmp_data]
-                                    print(tmp_data)
-                                    col_data.append(tmp_data)
-                                except Exception as e:
-                                    print("parse data failed")
-                                    return
-
-                            if types[i] == "int":
-                                flag = True
-                                try:
-                                    # tmp_data = int(df.iloc[:, i])
-                                    tmp_data = list(df.iloc[:, i])
-                                    tmp_data = [int(str(item)) for item in tmp_data]
-                                    col_data.append(tmp_data)
-                                except Exception as e:
-                                    print("parse data failed")
-                                    return
-
-                            if types[i] == "string":
-                                flag = True
-                                try:
-                                    tmp_data = list(df.iloc[:, i])
-                                    tmp_data = [str(item) for item in tmp_data]
-                                    col_data.append(tmp_data)
-                                except Exception as e:
-                                    print("parse data failed")
-                                    return
-                            
-                            if not flag:
-                                print("error type")
-                                return
-
-                        for i in range(len_col):
-                            colFilePath = os.path.join(tableDirPath, cols[i]+".wcol")
-                            if types[i] == "int":
-                                with open(colFilePath, 'ab') as fout:
-                                    for j in col_data[i]:
-                                        v = util.int_to_fixed_bytes(j)
-                                        fout.write(v)
-                            
-                            if types[i] == "double":
-                                with open(colFilePath, 'ab') as fout:
-                                    for j in col_data[i]:
-                                        v = util.double_to_fixed_bytes(j)
-                                        fout.write(v)
-
-                            if types[i] == "string":
-                                with open(colFilePath, 'ab') as fout:
-                                    for j in col_data[i]:
-                                        v = util.string_to_fixed_bytes(j, 255)
-                                        fout.write(v)
-
-                        return len(col_data[0])
+                    n = util.copyToTable(tableDirPath, tableMatePath, filePath, tbName, sep)
+                    if n:
+                        print("{} rows appended .".format(n))
+                    
 
             else:
                 print("syntax error: copy from filepath to tablename format 'sep';")
